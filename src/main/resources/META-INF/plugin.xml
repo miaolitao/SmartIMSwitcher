@@ -1,0 +1,60 @@
+<idea-plugin>
+    <id>com.example.smartim.switcher</id>
+    <name>Smart IM Switcher</name>
+    <version>1.0</version>
+    <vendor email="support@example.com" url="https://www.example.com">智能助手团队</vendor>
+
+    <description><![CDATA[
+      <h2>🎯 智能输入法切换 - 专为 macOS 开发者打造</h2>
+      <p>Smart IM Switcher 是一款为 macOS 开发者量身定制的智能输入法切换插件，能够根据代码上下文自动切换中英文输入法，让您在编码时无需手动切换，专注于创作。</p>
+      
+      <h3>✨ 核心特性</h3>
+      <ul>
+        <li><b>智能场景识别</b>：自动区分代码、注释、字符串等不同上下文</li>
+        <li><b>多语言支持</b>：独立配置 Java、Kotlin、Python 等语言的切换策略</li>
+        <li><b>高性能引擎</b>：采用 macOS 原生 Carbon API，毫秒级响应</li>
+        <li><b>智能缓存</b>：避免重复切换，降低系统开销</li>
+        <li><b>光标颜色提示</b>：中英文模式下显示不同颜色的光标</li>
+        <li><b>一键同步</b>：基础配置变更自动同步到所有语言场景</li>
+      </ul>
+      
+      <h3>🎨 切换规则</h3>
+      <ul>
+        <li><b>代码区域</b> → 自动切换至英文输入法 (如 ABC)</li>
+        <li><b>注释区域</b> → 自动切换至中文输入法 (如搜狗拼音)</li>
+        <li><b>字符串字面量</b> → 可自定义为中文或英文</li>
+        <li><b>Git 提交对话框</b> → 自动切换至中文</li>
+        <li><b>离开 IDE</b> → 可配置自动切换的输入法</li>
+      </ul>
+      
+      <h3>⚠️ 首次使用</h3>
+      <p>需要在 <b>系统设置 → 隐私与安全性 → 辅助功能</b> 中授权 IntelliJ IDEA。</p>
+      
+      <p><i>灵感来源：<a href="https://developer.aliyun.com/article/1440836">Smart Input</a></i></p>
+    ]]></description>
+    <!-- 依赖的模块 -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <!-- 扩展点注册 -->
+    <extensions defaultExtensionNs="com.intellij">
+        <editorFactoryListener implementation="com.example.smartim.listener.EditorListenerImpl"/>
+        <applicationService serviceImplementation="com.example.smartim.settings.SmartIMSettings"/>
+        <projectConfigurable parentId="other" instance="com.example.smartim.settings.SmartIMConfigurable"
+                             id="com.example.smartim.settings.SmartIMConfigurable"
+                             displayName="Smart IM Switcher"/>
+        <notificationGroup id="SmartIM Notifications" displayType="BALLOON"/>
+    </extensions>
+    <!-- 项目级监听器 -->
+    <projectListeners>
+        <listener class="com.example.smartim.listener.FocusListenerImpl"
+                  topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
+    </projectListeners>
+
+    <applicationListeners>
+        <listener class="com.example.smartim.listener.ApplicationListenerImpl"
+                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+    </applicationListeners>
+
+    <actions>
+    </actions>
+</idea-plugin>
