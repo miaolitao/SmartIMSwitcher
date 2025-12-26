@@ -2,8 +2,7 @@ package com.example.smartim.im;
 
 import com.example.smartim.settings.SmartIMSettings;
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -107,6 +106,43 @@ public class MacInputMethodService implements InputMethodService {
     }
 
     private String cachedIM = null;
+    private File externalToolFile = null;
+
+    public MacInputMethodService() {
+        ensureExternalToolExists();
+    }
+
+    private void ensureExternalToolExists() {
+        try {
+            // 在临时目录创建文件
+            externalToolFile = new File(System.getProperty("java.io.tmpdir"), "smart_im_switch");
+
+            // 每次启动都重新释放，确保工具是最新的
+            try (InputStream is = getClass().getResourceAsStream("/im-switch")) {
+                if (is == null) {
+                    LOG.error("[SmartIM] 严重错误：未在资源中找到 im-switch 工具！");
+                    return;
+                }
+                try (FileOutputStream fos = new FileOutputStream(externalToolFile)) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = is.read(buffer)) != -1) {
+                        fos.write(buffer, 0, len);
+                    }
+                }
+            }
+
+            // 赋予执行权限
+            if (!externalToolFile.setExecutable(true)) {
+                LOG.warn("[SmartIM] 无法设置 im-switch 为可执行，尝试 chmod 命令");
+                new ProcessBuilder("chmod", "+x", externalToolFile.getAbsolutePath()).start().waitFor();
+            }
+
+            LOG.info("[SmartIM] im-switch 工具已就绪: " + externalToolFile.getAbsolutePath());
+        } catch (Exception e) {
+            LOG.error("[SmartIM] 初始化 im-switch 工具失败", e);
+        }
+    }
 
     @Override
     public boolean switchByName(String name) {
@@ -119,17 +155,24 @@ public class MacInputMethodService implements InputMethodService {
             return true;
         }
 
+        if (externalToolFile == null || !externalToolFile.exists()) {
+            LOG.error("[SmartIM] im-switch 工具未就绪，尝试重新释放");
+            ensureExternalToolExists();
+            if (externalToolFile == null || !externalToolFile.exists()) {
+                return false;
+            }
+        }
+
         // 使用基于 Carbon API 的 im-switch 命令行工具
-        // 该工具直接调用 TISSelectInputSource，完全绕过 Accessibility API 限制
         try {
-            ProcessBuilder pb = new ProcessBuilder("/tmp/im-switch", name);
+            ProcessBuilder pb = new ProcessBuilder(externalToolFile.getAbsolutePath(), name);
             pb.redirectErrorStream(true);
             Process process = pb.start();
             String output = new BufferedReader(new InputStreamReader(process.getInputStream()))
                     .lines().collect(Collectors.joining("\n")).trim();
             int code = process.waitFor();
 
-            LOG.info("[SmartIM] im-switch 切换结果: " + output + " (exit: " + code + ")");
+            LOG.info("[SmartIM] im-switch (" + name + ") result: " + output + " (exit: " + code + ")");
 
             boolean success = "true".equalsIgnoreCase(output);
             if (success) {
